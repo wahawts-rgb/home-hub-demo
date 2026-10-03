@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.13.1
+ * Home Hub card for Home Assistant  -  v1.13.2
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -21,7 +21,7 @@
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.13.1';
+  const VERSION = '1.13.2';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -1239,6 +1239,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       const panelOff = st(cfg.alarm) === 'unavailable';
       const offline = new Set();
       const baseName = (id) => pretty(String(this._name(id)).replace(/\s+(door|moisture)$/i, ''));
+      if (wet.length) add('Leak detected: ' + wet.join(', '), true);
       if (panelOff) add('Security: SimpliSafe offline (panel and sensors)', true);
       if (ap2('rf_jamming')) add('Security: possible RF jamming', true);
       if (ap2('wall_power_level') != null && num(ap2('wall_power_level')) < 500) add('Security: running on battery backup', true);
