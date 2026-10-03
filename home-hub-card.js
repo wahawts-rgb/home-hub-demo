@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.11.0
+ * Home Hub card for Home Assistant  -  v1.13.0
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -9,6 +9,11 @@
  *   idle_return_seconds: 120     # return to default page after no touches
  *   people_style: photos         # photos | initials
  *   vibrance: 1                  # 0.3 - 1, lowers colour saturation of themes
+ *   layout: tablet               # tablet | tv  (tv = landscape wall screen: quote, clock, weather, word / this day in history)
+ *   rotate_seconds: 45           # tv layout: how long each Word / History panel stays up
+ *   quote_source: web            # web | builtin   (web = a ~1,400-quote online list, falling back to the built-in list)
+ *   word_source: web             # web | builtin   (web = a ~400-word list with live definitions, falling back to the built-in list)
+ *   quotes: [ {text, author} ]   # tv layout: your own quotes instead of the built-in list
  *   page_transition: slide       # slide | fade | none  (how Hub and Today swap)
  *   transition_ms: 420           # length of that animation
  *   fit_parent: false            # true = size to the parent element instead of the browser window (used by the demo page)
@@ -16,7 +21,7 @@
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.11.0';
+  const VERSION = '1.13.0';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -121,8 +126,8 @@
     'Memorial Day': { mode: 'light', base: '#a9b09b', c1: '#8d0f0f', c2: '#626d58', c3: '#d4c78c', c4: '#8f9b84', c5: '#30332b', accent: '#8d0f0f', onAccent: '#ffffff' },
     'July 4th/Labor Day': { mode: 'light', base: '#c8d4e5', c1: '#2c3f70', c2: '#a5231c', c3: '#e8ebed', c4: '#8089d2', c5: '#2c3f70', accent: '#2c3f70', onAccent: '#ffffff' },
   };
-  const LIGHT = { ink: '#181c20', muted: '#353b42', glass: 'rgba(255,255,255,0.46)', gborder: 'rgba(255,255,255,0.6)', gshadow: '0 10px 36px rgba(30,40,55,0.18), inset 0 1px 0 rgba(255,255,255,0.55)', chip: 'rgba(255,255,255,0.55)', chipb: 'rgba(255,255,255,0.7)', btn: 'rgba(255,255,255,0.35)', btnb: 'rgba(255,255,255,0.6)', line: 'rgba(24,28,32,0.14)', track: 'rgba(24,28,32,0.14)', ringoff: 'rgba(24,28,32,0.25)', halo: 'rgba(255,255,255,0.85)', panel: 'rgba(244,246,249,0.9)', alert: '#c0392b', caution: '#a8650a', onAlert: '#ffffff' };
-  const DARK = { ink: '#f2f5f9', muted: '#cdd5e0', glass: 'rgba(14,20,32,0.5)', gborder: 'rgba(255,255,255,0.16)', gshadow: '0 10px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)', chip: 'rgba(255,255,255,0.12)', chipb: 'rgba(255,255,255,0.2)', btn: 'rgba(255,255,255,0.1)', btnb: 'rgba(255,255,255,0.16)', line: 'rgba(255,255,255,0.18)', track: 'rgba(255,255,255,0.22)', ringoff: 'rgba(255,255,255,0.35)', halo: 'rgba(0,0,0,0.55)', panel: 'rgba(14,20,32,0.92)', alert: '#ff7a6b', caution: '#f2b84b', onAlert: '#2a0a07' };
+  const LIGHT = { ink: '#181c20', muted: '#353b42', glass: 'rgba(255,255,255,0.46)', gborder: 'rgba(255,255,255,0.6)', gshadow: '0 10px 36px rgba(30,40,55,0.18), inset 0 1px 0 rgba(255,255,255,0.55)', chip: 'rgba(255,255,255,0.55)', chipb: 'rgba(255,255,255,0.7)', btn: 'rgba(255,255,255,0.35)', btnb: 'rgba(255,255,255,0.6)', line: 'rgba(24,28,32,0.14)', track: 'rgba(24,28,32,0.14)', ringoff: 'rgba(24,28,32,0.25)', halo: 'rgba(255,255,255,0.85)', panel: 'rgba(244,246,249,0.9)', alert: '#c0392b', caution: '#a8650a', onAlert: '#ffffff', glassFlat: 'rgba(255,255,255,0.66)' };
+  const DARK = { ink: '#f2f5f9', muted: '#cdd5e0', glass: 'rgba(14,20,32,0.5)', gborder: 'rgba(255,255,255,0.16)', gshadow: '0 10px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)', chip: 'rgba(255,255,255,0.12)', chipb: 'rgba(255,255,255,0.2)', btn: 'rgba(255,255,255,0.1)', btnb: 'rgba(255,255,255,0.16)', line: 'rgba(255,255,255,0.18)', track: 'rgba(255,255,255,0.22)', ringoff: 'rgba(255,255,255,0.35)', halo: 'rgba(0,0,0,0.55)', panel: 'rgba(14,20,32,0.92)', alert: '#ff7a6b', caution: '#f2b84b', onAlert: '#2a0a07', glassFlat: 'rgba(14,20,32,0.72)' };
 
   function adj(hex, v) {
     if (v >= 1) return hex;
@@ -250,7 +255,137 @@
     windy: 'wind', 'windy-variant': 'wind', exceptional: 'warn',
   };
 
+  /* Built-in content for the TV layout. Quotes are from public-domain sources. */
+  const QUOTES = [
+    ['Take away thy opinion, and then there is taken away the complaint, \u2018I have been harmed.\u2019', 'Marcus Aurelius \u00b7 Meditations IV.7'],
+    ['Such as are thy habitual thoughts, such also will be the character of thy mind; for the soul is dyed by the thoughts.', 'Marcus Aurelius \u00b7 Meditations V.16'],
+    ['The best way of avenging thyself is not to become like the wrong-doer.', 'Marcus Aurelius \u00b7 Meditations VI.6'],
+    ['Confine thyself to the present.', 'Marcus Aurelius \u00b7 Meditations VII.29'],
+    ['No longer talk at all about the kind of man that a good man ought to be, but be such.', 'Marcus Aurelius \u00b7 Meditations X.16'],
+    ['If it is not right, do not do it; if it is not true, do not say it.', 'Marcus Aurelius \u00b7 Meditations XII.17'],
+    ['Men are disturbed, not by the things which happen, but by the opinions about the things.', 'Epictetus \u00b7 Enchiridion 5'],
+    ['First say to yourself what you would be; and then do what you have to do.', 'Epictetus \u00b7 Discourses III.23'],
+    ['We suffer more often in imagination than in reality.', 'Seneca \u00b7 Letters 13'],
+    ['Well done is better than well said.', 'Benjamin Franklin \u00b7 Poor Richard\u2019s Almanack'],
+    ['Little strokes fell great oaks.', 'Benjamin Franklin \u00b7 Poor Richard\u2019s Almanack'],
+    ['Lost time is never found again.', 'Benjamin Franklin \u00b7 Poor Richard\u2019s Almanack'],
+    ['Nothing great was ever achieved without enthusiasm.', 'Ralph Waldo Emerson \u00b7 Circles'],
+    ['Write it on your heart that every day is the best day in the year.', 'Ralph Waldo Emerson \u00b7 Work and Days'],
+    ['The only way to have a friend is to be one.', 'Ralph Waldo Emerson \u00b7 Friendship'],
+    ['To be great is to be misunderstood.', 'Ralph Waldo Emerson \u00b7 Self-Reliance'],
+    ['The question is not what you look at, but what you see.', 'Henry David Thoreau \u00b7 Journal, 1851'],
+    ['Simplify, simplify.', 'Henry David Thoreau \u00b7 Walden'],
+    ['The mountains are calling and I must go.', 'John Muir \u00b7 Letter, 1873'],
+    ['No act of kindness, no matter how small, is ever wasted.', 'Aesop'],
+    ['Slow and steady wins the race.', 'Aesop \u00b7 The Hare and the Tortoise'],
+    ['A journey of a thousand miles begins with a single step.', 'Lao Tzu \u00b7 Tao Te Ching'],
+    ['Our doubts are traitors, and make us lose the good we oft might win, by fearing to attempt.', 'William Shakespeare \u00b7 Measure for Measure'],
+    ['There is nothing either good or bad, but thinking makes it so.', 'William Shakespeare \u00b7 Hamlet'],
+    ['Nothing will ever be attempted, if all possible objections must first be overcome.', 'Samuel Johnson \u00b7 Rasselas'],
+    ['There is no charm equal to tenderness of heart.', 'Jane Austen \u00b7 Emma'],
+    ['No one is useless in this world who lightens the burden of it for anyone else.', 'Charles Dickens \u00b7 Our Mutual Friend'],
+    ['We are all in the gutter, but some of us are looking at the stars.', 'Oscar Wilde \u00b7 Lady Windermere\u2019s Fan'],
+    ['To travel hopefully is a better thing than to arrive.', 'Robert Louis Stevenson \u00b7 El Dorado'],
+    ['Courage is resistance to fear, mastery of fear, not absence of fear.', 'Mark Twain \u00b7 Pudd\u2019nhead Wilson'],
+    ['Isn\u2019t it nice to think that tomorrow is a new day with no mistakes in it yet?', 'L. M. Montgomery \u00b7 Anne of Green Gables'],
+    ['I am not afraid of storms, for I am learning how to sail my ship.', 'Louisa May Alcott \u00b7 Little Women'],
+    ['Although the world is full of suffering, it is full also of the overcoming of it.', 'Helen Keller \u00b7 Optimism'],
+    ['A thing of beauty is a joy for ever.', 'John Keats \u00b7 Endymion'],
+    ['Do what you can, with what you have, where you are.', 'Theodore Roosevelt'],
+  ].map((q) => ({ text: q[0], author: q[1] }));
+
+  const WORDS = [
+    ['equanimity', 'noun', 'ee-kwuh-NIM-ih-tee', 'Mental calmness and evenness of temper, especially when things are difficult.', 'She met the delay with surprising equanimity.'],
+    ['serendipity', 'noun', 'ser-un-DIP-ih-tee', 'The happy accident of finding something good while looking for something else.', 'Meeting her old teacher at the market was pure serendipity.'],
+    ['resilient', 'adjective', 'rih-ZIL-yunt', 'Able to recover quickly after trouble or change.', 'The garden proved resilient after the late frost.'],
+    ['gregarious', 'adjective', 'grih-GAIR-ee-us', 'Fond of company; enjoying being with other people.', 'Her gregarious uncle knew every guest by name.'],
+    ['ephemeral', 'adjective', 'ih-FEM-er-ul', 'Lasting only a very short time.', 'The morning frost was beautiful and ephemeral.'],
+    ['luminous', 'adjective', 'LOO-mih-nus', 'Giving off light; bright or glowing.', 'The lake looked luminous at dusk.'],
+    ['alacrity', 'noun', 'uh-LAK-rih-tee', 'Cheerful readiness and speed.', 'He accepted the invitation with alacrity.'],
+    ['benevolent', 'adjective', 'buh-NEV-uh-lunt', 'Kind and well-meaning; wanting to do good for others.', 'A benevolent neighbor shoveled the whole street.'],
+    ['perseverance', 'noun', 'per-suh-VEER-uns', 'Steady effort toward a goal despite difficulty.', 'Perseverance carried him through the long winter.'],
+    ['tenacious', 'adjective', 'tuh-NAY-shus', 'Holding firmly to something; not giving up easily.', 'A tenacious little vine climbed the whole fence.'],
+    ['gratitude', 'noun', 'GRAT-ih-tood', 'The feeling of being thankful and ready to show appreciation.', 'She wrote a note of gratitude to every volunteer.'],
+    ['mellifluous', 'adjective', 'muh-LIF-loo-us', 'Sweet and smooth to hear.', 'The choir\u2019s mellifluous harmony filled the hall.'],
+    ['sanguine', 'adjective', 'SANG-gwin', 'Hopeful and optimistic, especially when things are uncertain.', 'He stayed sanguine about the forecast.'],
+    ['verdant', 'adjective', 'VUR-dunt', 'Green with grass or plants.', 'Spring turned the hills verdant.'],
+    ['candor', 'noun', 'KAN-der', 'Honest and open speech.', 'She answered with refreshing candor.'],
+    ['sagacious', 'adjective', 'suh-GAY-shus', 'Having sound judgment and wisdom.', 'A sagacious friend gave simple advice.'],
+    ['fortitude', 'noun', 'FOR-tih-tood', 'Strength of mind that lets a person face pain or hardship calmly.', 'The family showed great fortitude.'],
+    ['nonchalant', 'adjective', 'non-shuh-LAHNT', 'Calm and relaxed, as if unconcerned.', 'He gave a nonchalant shrug.'],
+    ['zeal', 'noun', 'zeel', 'Great energy or enthusiasm for a cause or goal.', 'She tackled the garden with zeal.'],
+    ['solace', 'noun', 'SOL-is', 'Comfort in a time of sadness or worry.', 'He found solace in a quiet walk.'],
+    ['industrious', 'adjective', 'in-DUS-tree-us', 'Hard-working and diligent.', 'The industrious bees never rested.'],
+    ['whimsical', 'adjective', 'WIM-zih-kul', 'Playfully quaint or fanciful.', 'The garden gnomes had a whimsical charm.'],
+    ['effervescent', 'adjective', 'ef-er-VES-ent', 'Bubbly and lively; giving off tiny bubbles.', 'Her effervescent laugh lifted the room.'],
+    ['discern', 'verb', 'dih-SURN', 'To notice or understand something by careful attention.', 'He could discern a trail in the snow.'],
+    ['contentment', 'noun', 'kun-TENT-ment', 'A state of quiet satisfaction.', 'Tea on the porch brought deep contentment.'],
+    ['meticulous', 'adjective', 'muh-TIK-yuh-lus', 'Showing great attention to detail; very careful.', 'A meticulous baker measured every ingredient.'],
+    ['amiable', 'adjective', 'AY-mee-uh-bul', 'Friendly and pleasant.', 'The amiable clerk remembered every customer.'],
+    ['wanderlust', 'noun', 'WAHN-der-lust', 'A strong desire to travel and explore.', 'Old maps fed her wanderlust.'],
+    ['harmony', 'noun', 'HAR-muh-nee', 'A pleasing agreement or blend of parts.', 'The family worked in easy harmony.'],
+    ['radiant', 'adjective', 'RAY-dee-unt', 'Shining brightly; showing joy.', 'She looked radiant in the morning light.'],
+  ].map((w) => ({ word: w[0], pos: w[1], pron: w[2], def: w[3], ex: w[4] }));
+
+  /* Word list for the online word of the day: just the words. Definitions, pronunciation and an example are
+     looked up live from a free dictionary service, so the pool is large without hand-written entries. */
+  const WORD_LIST = Array.from(new Set(('abundant accolade acumen adamant adept admire adorn adventure affable affinity agile alacrity allure aloft altruism amble ambrosial ameliorate amicable ample anecdote anticipate apex applaud ardent aspire astute attune aura aurora authentic avid awe azure ' +
+    'balmy banter beacon bedrock benevolent benign bequeath bliss bloom bolster bountiful bravado breeze brilliant bucolic buoyant burgeon cadence calm camaraderie candid candor capable captivate carefree cascade catalyst celebrate celestial cheerful cherish chivalrous civil clarity clemency cogent cohesive comfort commend compassion composure concord confide constant content convivial cordial courage courteous cozy craft creative crisp cultivate curiosity ' +
+    'dapper dauntless dawn dazzle decorous dedicate delight devoted dexterity diligent discern distinct diverse dignity dynamic eager earnest eclectic effervescent elated elegant eloquent embrace emerge empathy enchant endeavor endure energetic enlighten enrapture ensemble enthusiasm equanimity equity esteem ethereal euphoria evergreen exalt exceed exhilarate exquisite exuberant ' +
+    'fable fathom felicity fervent fidelity fleet flourish fluent focus foresight forthright fortitude fortune fragrant frolic frugal fulfill gallant garland generous genial gentle genuine gist glean glee glimmer gracious gratitude gregarious grove guidance halcyon hallmark handsome harbor harmony harvest haven heartfelt heritage hearth hilarity honest honor hopeful horizon hospitable humble humility ' +
+    'idyllic illuminate imagine immerse impeccable incandescent ingenious inquire insight inspire integrity intrepid intuition invigorate jaunty jovial jubilant judicious keen kindle kindred kinship knack laudable lavish legacy lenient leisure levity liberty lilt linger lively lofty loyal lucid luminous lush lustrous magnanimous majestic marvel meadow mellow melody mentor meridian meticulous mirth modest momentum mosaic munificent muse ' +
+    'nature navigate nimble noble nostalgia nourish novel nurture oasis observant opulent optimism orchard ornate panorama paragon passion pastoral patience peaceful perceptive perseverance pervade picturesque pinnacle pioneer placid plucky poise polished ponder potent pragmatic precious prestige prosper prudent pristine punctual quaint quest quiescent radiant rapport rapture reassure refresh rejoice relish remarkable renew resilient resolute resonate resourceful respite restore reverence revive rhapsody robust romp rustic ' +
+    'sagacious sanctuary sanguine savor scenic scholar secure seed serene serendipity shimmer sincere skillful snug solace solitude soothe spirited splendid spontaneous sprightly stalwart steadfast stellar stewardship stoic stride sturdy sublime succor sunrise sunlit supple sustain symmetry synergy tact tapestry temperate tenacious tender thrive tranquil treasure trellis triumph trust twilight unity upbeat utopia valiant valor vast velvet venerate verdant versatile vibrant victory vigilant vigor virtue vista vivid vivacious voyage wander warmth wholesome whimsy wisdom wit wonder worthy yearn zeal zenith zephyr zest').split(' ')));
+  const QUOTE_FEED = 'https://dummyjson.com/quotes?limit=0';
+  const WORD_API = 'https://api.dictionaryapi.dev/api/v2/entries/en/';
+  const lsGet = (k) => { try { return JSON.parse(window.localStorage.getItem(k)); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { window.localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
+  const dayNumber = (d) => Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12).getTime() / 86400000);
+  const isoDay = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  function fetchJson(url, ms) {
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const t = setTimeout(() => { if (ctl) ctl.abort(); }, ms || 12000);
+    return fetch(url, ctl ? { signal: ctl.signal } : undefined).then(
+      (r) => { clearTimeout(t); if (!r.ok) throw new Error('http ' + r.status); return r.json(); },
+      (e) => { clearTimeout(t); throw e; });
+  }
+  /* Turns a dictionary-service reply into one tidy word entry, or null if nothing short enough is in it. */
+  function parseWord(data, fallbackWord) {
+    const entry = Array.isArray(data) ? data[0] : null;
+    if (!entry) return null;
+    const tidy = (t) => { t = String(t || '').trim(); if (!t) return ''; t = t.charAt(0).toUpperCase() + t.slice(1); return /[.!?]$/.test(t) ? t : t + '.'; };
+    for (const m of entry.meanings || []) {
+      for (const d of m.definitions || []) {
+        if (!d.definition || d.definition.length > 120) continue;
+        const ph = entry.phonetic || ((entry.phonetics || []).find((p) => p && p.text) || {}).text || '';
+        const ex = d.example && d.example.length <= 90 ? tidy(d.example) : '';
+        return { word: entry.word || fallbackWord, pos: m.partOfSpeech || '', pron: ph, def: tidy(d.definition), ex };
+      }
+    }
+    return null;
+  }
+
+  /* Picks three "On this day" entries from Wikipedia's feed, spread across different eras. */
+  function pickHistory(data) {
+    const ev = ((data && data.events) || []).filter((e) => e && e.text && typeof e.year === 'number');
+    let pool = ev.filter((e) => e.year >= 1400 && e.text.length <= 120);
+    if (pool.length < 3) pool = ev.filter((e) => e.text.length <= 160);
+    if (!pool.length) return [];
+    pool.sort((a, b) => a.year - b.year);
+    const n = Math.min(3, pool.length);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const e = pool[Math.floor(pool.length * (i + 0.5) / n)];
+      out.push({ year: String(e.year), text: e.text });
+    }
+    return out;
+  }
+  const dayOfYear = (d) => Math.floor((startOfDay(d) - new Date(d.getFullYear(), 0, 0)) / 86400000);
+
   const ICONS = {
+    quote: '<path d="M3 21c3 0 7-1 7-8V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h4c0 3-2 4-4 4z"/><path d="M15 21c3 0 7-1 7-8V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h4c0 3-2 4-4 4z"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
     sun: '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>',
     moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
     cloud: '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>',
@@ -300,6 +435,8 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .navfixed .wrap{padding-bottom:120u}
 .page{flex:1;min-height:0;display:flex;flex-direction:column;gap:24u}
 .wrap.out{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+.wrap.moving{will-change:transform}
+.wrap.moving .g{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--glass-flat)}
 .g{padding:28u;border-radius:28u;background:var(--glass);backdrop-filter:blur(30u) saturate(1.15);-webkit-backdrop-filter:blur(30u) saturate(1.15);border:1px solid var(--gborder);box-shadow:var(--gshadow);overflow:hidden;display:flex;flex-direction:column;gap:12u;min-width:0}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12u}
 .lab{display:flex;align-items:center;gap:10u;font-size:20u;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
@@ -467,6 +604,50 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .compact .seg{height:50u}
 .compact .hl1{font-size:26u}
 .compact .sr{font-size:22u}
+/* TV layout */
+.tvmode .wrap{padding:56u 72u}
+.tvmode .g{backdrop-filter:none;-webkit-backdrop-filter:none}
+.tvmode .c1{left:-200u;top:-280u;width:860u;height:860u}
+.tvmode .c2{right:-260u;top:260u;width:780u;height:780u}
+.tvmode .c3{left:260u;top:auto;bottom:-340u;width:660u;height:660u}
+.tvmode .c4{left:860u;top:80u;width:380u;height:380u}
+.tvmode .c5{right:380u;bottom:-300u;width:560u;height:560u}
+.tvgrid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 600u;gap:28u}
+.tvq{padding:56u 72u;gap:0}
+.tvqb{flex:1;display:flex;flex-direction:column;justify-content:center;gap:36u;min-height:0}
+.tvquote{font-family:'Fraunces',Georgia,serif;font-weight:var(--nw,500);font-variation-settings:'opsz' 36;letter-spacing:-.02em;line-height:1.14}
+.tvquote.qs{font-size:128u}.tvquote.qm{font-size:96u}.tvquote.ql{font-size:80u}
+.tvattr{font-size:30u;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+.tvcol{display:flex;flex-direction:column;gap:28u;min-height:0}
+.tvclock{padding:34u 40u;gap:12u}
+.tvtime{display:flex;align-items:baseline;gap:14u}
+.tvtn{font-size:156u;line-height:.95;letter-spacing:-.03em}
+.tvtp{font-size:46u;font-weight:500;color:var(--muted)}
+.tvdate{font-size:38u;font-weight:500}
+.tvhr{height:1px;background:var(--line);margin:6u 0}
+.tvwx{display:flex;align-items:center;gap:20u}
+.tvwt{font-size:72u;line-height:1}
+.tvwc{font-size:32u;font-weight:500}
+.tvwh{font-size:25u;color:var(--muted)}
+.tvcard{padding:36u 40u;flex:1;min-height:0;gap:22u;overflow:hidden}
+.tvbody{flex:1;display:flex;flex-direction:column;justify-content:center;gap:20u;min-height:0}
+.tvbody.swap{animation:tvin .8s ease both}
+@keyframes tvin{from{opacity:0;transform:translateY(12u)}to{opacity:1;transform:none}}
+.tvword{font-size:86u;line-height:1}
+.tvpron{font-size:26u;color:var(--muted)}
+.tvdef{font-size:35u;line-height:1.28}
+.tvex{font-size:30u;line-height:1.3;color:var(--muted)}
+.tvhist{display:flex;flex-direction:column;gap:30u}
+.tvh{display:flex;gap:24u;align-items:baseline}
+.tvy{font-size:46u;width:112u;flex-shrink:0;color:var(--accent)}
+.tvt{font-size:31u;line-height:1.25}
+.tvfoot{display:flex;flex-direction:column;gap:16u}
+.tvpills{display:flex;gap:12u}
+.tvpill{padding:8u 24u;border-radius:999u;font-size:23u;font-weight:600;background:var(--chip)}
+.tvpill.on{background:var(--accent);color:var(--on-accent)}
+.tvbar{height:8u;border-radius:4u;background:var(--track);overflow:hidden}
+.tvfill{height:100%;width:100%;background:var(--accent);border-radius:4u;transform-origin:left;transform:scaleX(0);animation-name:tvbar;animation-timing-function:linear;animation-iteration-count:infinite}
+@keyframes tvbar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 /* Navigation */
 .nav{position:absolute;left:40u;right:40u;bottom:30u;display:flex;justify-content:center;pointer-events:none;opacity:0;transform:translateY(10u);transition:opacity .18s ease,transform .18s ease}
 .nav.show{opacity:1;transform:none}
@@ -587,6 +768,28 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
     return h + '</div>';
   }
 
+  function tvHtml(vm) {
+    const t = vm.tv, w = vm.weather, q = t.quote, wd = t.word;
+    const qs = q.text.length < 45 ? 'qs' : q.text.length < 95 ? 'qm' : 'ql';
+    const body = t.panel === 'history'
+      ? '<div class="tvhist">' + t.history.map((h) => '<div class="tvh"><div class="serif tvy">' + esc(h.year) + '</div><div class="tvt">' + esc(h.text) + '</div></div>').join('') + '</div>'
+      : '<div class="serif tvword">' + esc(wd.word.charAt(0).toUpperCase() + wd.word.slice(1)) + '</div><div class="tvpron">' + esc(wd.pos) + (wd.pron ? ' \u00b7 ' + esc(wd.pron) : '') + '</div>' +
+        '<div class="tvdef">' + esc(wd.def) + '</div>' + (wd.ex ? '<div class="serif tvex">\u201c' + esc(wd.ex) + '\u201d</div>' : '');
+    const pills = t.panels.map((p) => '<div class="tvpill' + (p === t.panel ? ' on' : '') + '">' + (p === 'word' ? 'Word' : 'History') + '</div>').join('');
+    return '<div class="tvgrid">' +
+      '<div class="g tvq">' + lab('quote', 'Quote of the day') +
+      '<div class="tvqb"><div class="tvquote ' + qs + '">\u201c' + esc(q.text) + '\u201d</div>' + (q.author ? '<div class="tvattr">' + esc(q.author) + '</div>' : '') + '</div></div>' +
+      '<div class="tvcol">' +
+      '<div class="g tvclock"><div class="tvtime"><div class="serif tvtn">' + esc(vm.time.hm) + '</div><div class="tvtp">' + esc(vm.time.ap) + '</div></div>' +
+      '<div class="tvdate">' + esc(vm.time.date) + '</div><div class="tvhr"></div>' +
+      '<div class="tvwx"><span class="acc" style="display:flex">' + ic(w.icon, 'i64') + '</span><div class="serif tvwt">' + esc(w.temp) + '</div>' +
+      '<div><div class="tvwc">' + esc(w.cond) + '</div><div class="tvwh">' + esc(w.hilo) + '</div></div></div></div>' +
+      '<div class="g tvcard">' + (t.panel === 'history' ? lab('clock', 'On this day \u00b7 ' + t.dateLabel) : lab('book', 'Word of the day')) +
+      '<div class="tvbody' + (t.swap ? ' swap' : '') + '">' + body + '</div>' +
+      '<div class="tvfoot"><div class="tvpills">' + pills + '</div><div class="tvbar"><div class="tvfill"></div></div></div></div>' +
+      '</div></div>';
+  }
+
   function todayEvent(e) {
     const sub = (e.allDay ? 'All day' : fmtTime(e.start) + ' – ' + fmtTime(e.end)) + (e.location ? ' · ' + e.location : '');
     return '<div class="tev"><div class="tdot" style="background:' + esc(e.color) + '"></div><div class="ttx"><div class="ttl">' + esc(e.title) + '</div><div class="tsub">' + esc(sub) + '</div></div></div>';
@@ -652,6 +855,10 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       this._confirm = null;
       this._lastDtl = '';
       this._detail = null;
+      this._swapId = 0;
+      this._anims = [];
+      this._animating = false;
+      this._dirty = false;
       this._dbg = this._root.querySelector('.dbg');
       this._lastNav = '';
       this._hass = null;
@@ -678,6 +885,11 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       cfg.vibrance = typeof c.vibrance === 'number' ? c.vibrance : 1;
       cfg.calendarScale = typeof c.calendar_scale === 'number' ? Math.min(1.2, Math.max(0.5, c.calendar_scale)) : 0.85;
       cfg.fitParent = !!c.fit_parent;
+      cfg.layout = c.layout === 'tv' ? 'tv' : 'tablet';
+      cfg.quoteSource = c.quote_source === 'builtin' ? 'builtin' : 'web';
+      cfg.wordSource = c.word_source === 'builtin' ? 'builtin' : 'web';
+      cfg.rotateSeconds = typeof c.rotate_seconds === 'number' ? Math.min(600, Math.max(10, c.rotate_seconds)) : 45;
+      cfg.quotes = Array.isArray(c.quotes) ? c.quotes.filter((x) => x && x.text) : null;
       cfg.pageTransition = ['slide', 'fade', 'none'].indexOf(c.page_transition) >= 0 ? c.page_transition : 'slide';
       cfg.transitionMs = typeof c.transition_ms === 'number' ? Math.min(1500, Math.max(100, c.transition_ms)) : 420;
       cfg.numberWeight = typeof c.number_weight === 'number' ? Math.min(700, Math.max(400, c.number_weight)) : 500;
@@ -687,6 +899,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       cfg.peopleStyle = c.people_style === 'initials' ? 'initials' : 'photos';
       this._cfg = cfg;
       this._stage.classList.toggle('navfixed', cfg.navAutohide === 0);
+      this._stage.classList.toggle('tvmode', cfg.layout === 'tv');
       this._nav.classList.toggle('show', cfg.navAutohide === 0);
       if (!this._page) this._page = cfg.defaultPage;
       let saved = null;
@@ -733,41 +946,71 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
     _calScale() { return this._calLocal != null ? this._calLocal : this._cfg.calendarScale; }
 
     /* Hub and Today are ordered left to right like the switch. Going right pushes the old page out to the
-       left and brings the new one in from the right; going left does the opposite. Only transform is animated
-       (no opacity), because an opacity change would flatten the frosted glass for the length of the move. */
+       left and brings the new one in from the right; going left does the opposite.
+       Tablet-friendly: only transform moves; the frosted blur is swapped for flat glass while it moves (blurring
+       two full pages on every frame is what makes a tablet stutter); the animation starts a couple of frames
+       after the new page is built so the build work doesn't land mid-move; and other redraws wait until it ends. */
     _swapPages(html, page) {
       const mode = this._cfg.pageTransition;
       const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       if (mode === 'none' || reduce || typeof this._wrap.animate !== 'function') { this._wrap.innerHTML = html; return; }
+      this._endSwap();
+      const id = ++this._swapId;
       const order = ['hub', 'today'];
       const dir = order.indexOf(page) >= order.indexOf(this._shownPage) ? 1 : -1;
       const w = this._stage.clientWidth || this.clientWidth || 1080;
       const ms = this._cfg.transitionMs;
-      if (this._out) { this._out.remove(); this._out = null; }
+      const fade = mode === 'fade';
       const out = this._wrap.cloneNode(true);
-      out.classList.add('out');
+      out.classList.add('out', 'moving');
       this._stage.insertBefore(out, this._nav);
       this._out = out;
       this._wrap.innerHTML = html;
-      if (mode === 'fade') {
-        out.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing: 'ease', fill: 'forwards' });
-        this._wrap.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease' });
-      } else {
-        const ease = 'cubic-bezier(.22,.8,.3,1)';
-        out.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dir * w) + 'px)' }], { duration: ms, easing: ease, fill: 'forwards' });
-        this._wrap.animate([{ transform: 'translateX(' + (dir * w) + 'px)' }, { transform: 'translateX(0)' }], { duration: ms, easing: ease });
-      }
-      setTimeout(() => { if (this._out === out) { out.remove(); this._out = null; } }, ms + 80);
+      this._wrap.classList.add('moving');
+      const parked = fade ? '' : 'translateX(' + (dir * w) + 'px)';
+      if (fade) this._wrap.style.opacity = '0'; else this._wrap.style.transform = parked;
+      this._animating = true;
+      let started = false;
+      const finish = () => {
+        if (id !== this._swapId) return;
+        this._endSwap();
+        if (this._dirty) { this._dirty = false; this._schedule(); }
+      };
+      const start = () => {
+        if (started || id !== this._swapId) return;
+        started = true;
+        const ease = fade ? 'ease' : 'cubic-bezier(.22,.8,.3,1)';
+        const opts = { duration: ms, easing: ease, fill: 'both' };
+        const k1 = fade ? [{ opacity: 1 }, { opacity: 0 }] : [{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dir * w) + 'px)' }];
+        const k2 = fade ? [{ opacity: 0 }, { opacity: 1 }] : [{ transform: parked }, { transform: 'translateX(0)' }];
+        const a1 = out.animate(k1, opts);
+        const a2 = this._wrap.animate(k2, opts);
+        this._anims = [a1, a2];
+        a2.onfinish = finish;
+      };
+      requestAnimationFrame(() => requestAnimationFrame(start));
+      setTimeout(start, 120);
+      setTimeout(finish, ms + 600);
+    }
+
+    _endSwap() {
+      (this._anims || []).forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } });
+      this._anims = [];
+      if (this._out) { this._out.remove(); this._out = null; }
+      this._wrap.style.transform = '';
+      this._wrap.style.opacity = '';
+      this._wrap.classList.remove('moving');
+      this._animating = false;
     }
 
     _revealNav() {
-      if (!this._cfg || this._cfg.navAutohide === 0) return;
+      if (!this._cfg || this._cfg.navAutohide === 0 || this._cfg.layout === 'tv') return;
       this._nav.classList.add('show');
       clearTimeout(this._navTimer);
       this._navTimer = setTimeout(() => this._nav.classList.remove('show'), this._cfg.navAutohide * 1000);
     }
 
-    _isCompact(H) { return H < (this._cfg && this._cfg.navAutohide === 0 ? 1850 : 1820); }
+    _isCompact(H) { return !(this._cfg && this._cfg.layout === 'tv') && H < (this._cfg && this._cfg.navAutohide === 0 ? 1850 : 1820); }
 
     _resize() {
       const w = this.clientWidth;
@@ -775,9 +1018,9 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       const top = Math.max(0, this.getBoundingClientRect().top);
       const h = this._cfg && this._cfg.fitParent && this.parentElement
         ? Math.max(300, Math.floor(this.parentElement.clientHeight))
-        : Math.max(600, Math.floor(window.innerHeight - top));
-      // Fit the width; only shrink further if the screen is very short.
-      const u = Math.min(w / 1080, h / 1700);
+        : Math.max(this._cfg && this._cfg.layout === 'tv' ? 300 : 600, Math.floor(window.innerHeight - top));
+      // Tablet: fit the width, shrink further only if very short. TV: fit a 1920 x 1080 canvas.
+      const u = this._cfg && this._cfg.layout === 'tv' ? Math.min(w / 1920, h / 1080) : Math.min(w / 1080, h / 1700);
       this._u = u;
       this._H = h / u;
       this.style.setProperty('--u', u + 'px');
@@ -790,9 +1033,11 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       this._started = true;
       this._revealNav();
       this._loadForecast();
-      this._loadCalendars();
       this._timers.push(setInterval(() => this._loadForecast(), 20 * 60 * 1000));
-      this._timers.push(setInterval(() => this._loadCalendars(), 5 * 60 * 1000));
+      if (this._cfg.layout !== 'tv') {
+        this._loadCalendars();
+        this._timers.push(setInterval(() => this._loadCalendars(), 5 * 60 * 1000));
+      }
       this._timers.push(setInterval(() => this._tick(), 5000));
     }
 
@@ -1081,17 +1326,140 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 
     _render() {
       if (!this._hass || !this._cfg) return;
+      if (this._animating) { this._dirty = true; return; }
       let vm;
       try { vm = this._compute(); } catch (err) { console.error('home-hub-card', err); return; }
-      const tv = themeVals(vm.theme, this._cfg.vibrance);
+      if (this._cfg.layout === 'tv') { this._renderTv(vm); return; }
+      this._applyTokens(themeVals(vm.theme, this._cfg.vibrance));
+      const html = '<div class="page">' + (vm.page === 'hub' ? hubHtml(vm) : todayHtml(vm)) + '</div>';
+      this._paintTablet(vm, html);
+    }
+
+    _applyTokens(tv) {
       const set = (k, v) => this._stage.style.setProperty(k, v);
       set('--nw', String(this._cfg.numberWeight));
       set('--cs', String(this._calScale()));
       set('--base', tv.base); set('--c1', tv.c1); set('--c2', tv.c2); set('--c3', tv.c3); set('--c4', tv.c4); set('--c5', tv.c5);
       set('--accent', tv.accent); set('--on-accent', tv.onAccent); set('--ink', tv.ink); set('--muted', tv.muted);
       set('--glass', tv.glass); set('--gborder', tv.gborder); set('--gshadow', tv.gshadow); set('--chip', tv.chip); set('--chipb', tv.chipb);
-      set('--btn', tv.btn); set('--btnb', tv.btnb); set('--line', tv.line); set('--track', tv.track); set('--ringoff', tv.ringoff); set('--halo', tv.halo); set('--panel', tv.panel); set('--alert', tv.alert); set('--on-alert', tv.onAlert); set('--caution', tv.caution);
-      const html = '<div class="page">' + (vm.page === 'hub' ? hubHtml(vm) : todayHtml(vm)) + '</div>';
+      set('--btn', tv.btn); set('--btnb', tv.btnb); set('--line', tv.line); set('--track', tv.track); set('--ringoff', tv.ringoff); set('--halo', tv.halo); set('--panel', tv.panel); set('--alert', tv.alert); set('--on-alert', tv.onAlert); set('--caution', tv.caution); set('--glass-flat', tv.glassFlat);
+    }
+
+    _renderTv(vm) {
+      vm.tv = this._tvContent(new Date());
+      const tv = themeVals(vm.theme, this._cfg.vibrance);
+      // No blur on the TV: a stick-sized browser struggles with it, so the glass is a little more opaque instead.
+      tv.glass = (THEMES[vm.theme] || THEMES['Default']).mode === 'dark' ? 'rgba(14,20,32,0.72)' : 'rgba(255,255,255,0.62)';
+      this._applyTokens(tv);
+      const html = '<div class="page">' + tvHtml(vm) + '</div>';
+      if (html !== this._last) {
+        this._wrap.innerHTML = html;
+        this._last = html;
+        const f = this._wrap.querySelector('.tvfill');
+        if (f) { f.style.animationDuration = vm.tv.period + 's'; f.style.animationDelay = '-' + vm.tv.phase.toFixed(2) + 's'; }
+      }
+      this._nav.classList.remove('show');
+      if (this._cfg.debug) this._dbg.textContent = 'v' + VERSION + ' · tv · ' + Math.round(this.clientWidth) + 'px wide · scale ' + (this._u || 0).toFixed(3) + ' · ' + vm.tv.panel + ' (' + vm.tv.period + 's) · quote: ' + this._srcQuote + ' · word: ' + this._srcWord + ' · history: ' + (vm.tv.history.length ? 'web' : 'none');
+      else if (this._dbg.textContent) this._dbg.textContent = '';
+    }
+
+    /* Quote and word follow the day of the year; the history panel needs Wikipedia's feed and is skipped if it can't load. */
+    _tvContent(now) {
+      const cfg = this._cfg;
+      const doy = dayOfYear(now);
+      const hist = this._histFor(now);
+      const panels = hist && hist.length ? ['word', 'history'] : ['word'];
+      const period = cfg.rotateSeconds * 1000;
+      const panel = panels[Math.floor(now.getTime() / period) % panels.length];
+      const swap = this._tvShown !== undefined && this._tvShown !== panel;
+      this._tvShown = panel;
+      return {
+        panel, panels, swap, period: cfg.rotateSeconds, phase: (now.getTime() % period) / 1000,
+        quote: this._quoteFor(now, doy), word: this._wordFor(now, doy),
+        history: hist || [], dateLabel: MON3[now.getMonth()] + ' ' + now.getDate(),
+      };
+    }
+
+    /* Quote of the day: your own list if you gave one; otherwise a big online list (same quote on every screen
+       each day, cached on the device), falling back to the built-in list when it can't load. */
+    _quoteFor(now, doy) {
+      const cfg = this._cfg;
+      if (cfg.quotes && cfg.quotes.length) { this._srcQuote = 'your list'; return cfg.quotes[doy % cfg.quotes.length]; }
+      if (cfg.quoteSource === 'web') {
+        const list = this._webQuoteList();
+        if (list && list.length) { const q = list[dayNumber(now) % list.length]; this._srcQuote = 'web (' + list.length + ')'; return { text: q[0], author: q[1] }; }
+      }
+      this._srcQuote = 'built-in (' + QUOTES.length + ')';
+      return QUOTES[doy % QUOTES.length];
+    }
+
+    _webQuoteList() {
+      if (this._webQuotes) return this._webQuotes;
+      const cached = lsGet('home_hub_quotes_v1');
+      const fresh = cached && Array.isArray(cached.list) && cached.list.length > 50 && Date.now() - cached.at < 14 * 86400000;
+      if (fresh) { this._webQuotes = cached.list; return cached.list; }
+      const stale = cached && Array.isArray(cached.list) && cached.list.length > 50 ? cached.list : null;
+      if (typeof fetch !== 'function' || this._quotesBusy || (this._quotesFail && Date.now() - this._quotesFail < 30 * 60 * 1000)) return stale;
+      this._quotesBusy = true;
+      fetchJson(QUOTE_FEED, 20000).then((data) => {
+        const list = ((data && data.quotes) || []).filter((q) => q && q.quote && q.quote.length <= 140).map((q) => [String(q.quote), String(q.author || '')]);
+        if (list.length < 50) throw new Error('too few');
+        this._webQuotes = list; this._quotesBusy = false; lsSet('home_hub_quotes_v1', { at: Date.now(), list }); this._schedule();
+      }).catch(() => { this._quotesFail = Date.now(); this._quotesBusy = false; });
+      return stale;
+    }
+
+    /* Word of the day: a word from the big list (one per day), with its definition, pronunciation and example
+       looked up online. Until that arrives, or if it can't, the built-in entries are used. */
+    _wordFor(now, doy) {
+      const cfg = this._cfg;
+      const builtin = WORDS[(doy + 7) % WORDS.length];
+      if (cfg.wordSource !== 'web' || typeof fetch !== 'function') { this._srcWord = 'built-in (' + WORDS.length + ')'; return builtin; }
+      const key = isoDay(now);
+      this._words = this._words || {};
+      const have = this._words[key];
+      if (have) { this._srcWord = 'web (' + WORD_LIST.length + ')'; return have; }
+      if (have === undefined) {
+        const saved = lsGet('home_hub_word_v1');
+        if (saved && saved.key === key && saved.word) { this._words[key] = saved.word; this._srcWord = 'web (' + WORD_LIST.length + ')'; return saved.word; }
+        this._words[key] = null;
+        this._fetchWord(key, dayNumber(now));
+      }
+      this._srcWord = 'built-in (' + WORDS.length + ')';
+      return builtin;
+    }
+
+    _fetchWord(key, base) {
+      const giveUp = () => { this._words[key] = false; setTimeout(() => { if (this._words && this._words[key] === false) delete this._words[key]; }, 30 * 60 * 1000); };
+      const attempt = (i) => {
+        if (i >= 5) { giveUp(); return; }
+        const w = WORD_LIST[(base + i) % WORD_LIST.length];
+        fetchJson(WORD_API + encodeURIComponent(w), 10000).then((data) => {
+          const parsed = parseWord(data, w);
+          if (!parsed) { attempt(i + 1); return; }
+          this._words[key] = parsed; lsSet('home_hub_word_v1', { key, word: parsed }); this._schedule();
+        }).catch((e) => { if (e && /^http 404/.test(String(e.message))) attempt(i + 1); else giveUp(); });
+      };
+      attempt(0);
+    }
+
+    _histFor(now) {
+      const key = pad2(now.getMonth() + 1) + '/' + pad2(now.getDate());
+      this._hist = this._hist || {};
+      if (key in this._hist) return this._hist[key];
+      this._hist[key] = null;
+      if (typeof fetch !== 'function') { this._hist[key] = []; return []; }
+      const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      const timer = setTimeout(() => { if (ctl) ctl.abort(); }, 10000);
+      const retry = () => setTimeout(() => { if (this._hist) delete this._hist[key]; }, 30 * 60 * 1000);
+      fetch('https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/' + key, ctl ? { signal: ctl.signal } : undefined)
+        .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+        .then((data) => { clearTimeout(timer); this._hist[key] = pickHistory(data); if (!this._hist[key].length) retry(); this._schedule(); })
+        .catch(() => { clearTimeout(timer); this._hist[key] = []; retry(); this._schedule(); });
+      return null;
+    }
+
+    _paintTablet(vm, html) {
       if (html !== this._last) {
         if (this._shownPage && this._shownPage !== vm.page && this._last) this._swapPages(html, vm.page);
         else this._wrap.innerHTML = html;
@@ -1175,6 +1543,6 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   window.customCards.push({ type: 'home-hub-card', name: 'Home Hub', description: 'Hub and Today pages with seasonal themes (v' + VERSION + ')' });
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { confirmHtml, detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
+    module.exports = { parseWord, WORD_LIST, tvHtml, pickHistory, QUOTES, WORDS, confirmHtml, detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
   }
 })();

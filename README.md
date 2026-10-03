@@ -4,6 +4,7 @@ A Home Assistant dashboard card for a wall-mounted portrait tablet: one custom e
 
 - **Hub**: weather, calendar, climate, car, power, house and security, media, and system health, on a frosted-glass layout.
 - **Today**: a big clock and a large-type calendar that reads from across the room.
+- **TV** (optional second dashboard): a landscape layout with a quote of the day, clock, weather, and a rotating word of the day / this day in history.
 
 **Try it:** open `index.html` (or the GitHub Pages link once published). The demo runs entirely in your browser against a made-up house. Nothing is connected to Home Assistant, and every name, place, event and photo is invented.
 
@@ -43,6 +44,30 @@ views:
           weather: weather.my_home
           # ...see below
 ```
+
+## TV layout
+
+The same card has a landscape layout for a wall TV (or any 16:9 screen). Make a second dashboard with a panel view and set `layout: tv`:
+
+```yaml
+views:
+  - title: TV
+    path: tv
+    panel: true
+    cards:
+      - type: custom:home-hub-card
+        layout: tv
+        rotate_seconds: 45      # how long the Word / History panel stays up
+        vibrance: 1
+```
+
+It shows a quote of the day on the left, the clock and weather top right, and a card below that alternates between a word of the day and this day in history. It uses the same themes (including Auto) and the same weather and theme entities as the tablet layout, with a lighter look that drops the blur so it runs on a streaming stick.
+
+- **Quote of the day:** by default taken from a free online list of about 1,400 short quotes, one per day (the same quote on every screen), cached on the device so it is only downloaded now and then. Set `quote_source: builtin` to use the 35 hand-checked quotes built into the card instead. The online list is large but loosely attributed, so the built-in list is the more careful one. To use your own quotes, add `quotes: [ { text: "...", author: "..." } ]`.
+- **Word of the day:** by default a word from a list of about 380 built into the card (one per day), with its definition, pronunciation and an example looked up from the free Free Dictionary API. Set `word_source: builtin` to use the 30 hand-written entries instead.
+- **This day in history:** fetched from Wikipedia's public "On this day" feed (only the month and day are sent). If it can't load, that panel is skipped.
+- Every online piece falls back quietly (to the built-in quote and word, or no history panel) if the internet or a service is down. Turn on `debug: true` to see where each piece came from. Nothing about you or your home is sent: the requests carry only a date or a single word.
+- The TV's browser must be logged in to Home Assistant once ("Keep me logged in" on the sign-in page).
 
 ## Your entities
 
