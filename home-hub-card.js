@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.10.0
+ * Home Hub card for Home Assistant  -  v1.11.0
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -9,12 +9,14 @@
  *   idle_return_seconds: 120     # return to default page after no touches
  *   people_style: photos         # photos | initials
  *   vibrance: 1                  # 0.3 - 1, lowers colour saturation of themes
+ *   page_transition: slide       # slide | fade | none  (how Hub and Today swap)
+ *   transition_ms: 420           # length of that animation
  *   fit_parent: false            # true = size to the parent element instead of the browser window (used by the demo page)
  *   entities: { ... }            # your own entity ids; anything you leave out falls back to the placeholder
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.10.0';
+  const VERSION = '1.11.0';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -297,6 +299,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .wrap{position:relative;height:100%;padding:40u;display:flex;flex-direction:column;gap:24u}
 .navfixed .wrap{padding-bottom:120u}
 .page{flex:1;min-height:0;display:flex;flex-direction:column;gap:24u}
+.wrap.out{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
 .g{padding:28u;border-radius:28u;background:var(--glass);backdrop-filter:blur(30u) saturate(1.15);-webkit-backdrop-filter:blur(30u) saturate(1.15);border:1px solid var(--gborder);box-shadow:var(--gshadow);overflow:hidden;display:flex;flex-direction:column;gap:12u;min-width:0}
 .row{display:flex;align-items:center;justify-content:space-between;gap:12u}
 .lab{display:flex;align-items:center;gap:10u;font-size:20u;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
@@ -675,6 +678,8 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       cfg.vibrance = typeof c.vibrance === 'number' ? c.vibrance : 1;
       cfg.calendarScale = typeof c.calendar_scale === 'number' ? Math.min(1.2, Math.max(0.5, c.calendar_scale)) : 0.85;
       cfg.fitParent = !!c.fit_parent;
+      cfg.pageTransition = ['slide', 'fade', 'none'].indexOf(c.page_transition) >= 0 ? c.page_transition : 'slide';
+      cfg.transitionMs = typeof c.transition_ms === 'number' ? Math.min(1500, Math.max(100, c.transition_ms)) : 420;
       cfg.numberWeight = typeof c.number_weight === 'number' ? Math.min(700, Math.max(400, c.number_weight)) : 500;
       cfg.debug = !!c.debug;
       cfg.navAutohide = typeof c.nav_autohide_seconds === 'number' ? c.nav_autohide_seconds : 7;
@@ -726,6 +731,34 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
     }
 
     _calScale() { return this._calLocal != null ? this._calLocal : this._cfg.calendarScale; }
+
+    /* Hub and Today are ordered left to right like the switch. Going right pushes the old page out to the
+       left and brings the new one in from the right; going left does the opposite. Only transform is animated
+       (no opacity), because an opacity change would flatten the frosted glass for the length of the move. */
+    _swapPages(html, page) {
+      const mode = this._cfg.pageTransition;
+      const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (mode === 'none' || reduce || typeof this._wrap.animate !== 'function') { this._wrap.innerHTML = html; return; }
+      const order = ['hub', 'today'];
+      const dir = order.indexOf(page) >= order.indexOf(this._shownPage) ? 1 : -1;
+      const w = this._stage.clientWidth || this.clientWidth || 1080;
+      const ms = this._cfg.transitionMs;
+      if (this._out) { this._out.remove(); this._out = null; }
+      const out = this._wrap.cloneNode(true);
+      out.classList.add('out');
+      this._stage.insertBefore(out, this._nav);
+      this._out = out;
+      this._wrap.innerHTML = html;
+      if (mode === 'fade') {
+        out.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, easing: 'ease', fill: 'forwards' });
+        this._wrap.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: 'ease' });
+      } else {
+        const ease = 'cubic-bezier(.22,.8,.3,1)';
+        out.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(' + (-dir * w) + 'px)' }], { duration: ms, easing: ease, fill: 'forwards' });
+        this._wrap.animate([{ transform: 'translateX(' + (dir * w) + 'px)' }, { transform: 'translateX(0)' }], { duration: ms, easing: ease });
+      }
+      setTimeout(() => { if (this._out === out) { out.remove(); this._out = null; } }, ms + 80);
+    }
 
     _revealNav() {
       if (!this._cfg || this._cfg.navAutohide === 0) return;
@@ -1059,7 +1092,12 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       set('--glass', tv.glass); set('--gborder', tv.gborder); set('--gshadow', tv.gshadow); set('--chip', tv.chip); set('--chipb', tv.chipb);
       set('--btn', tv.btn); set('--btnb', tv.btnb); set('--line', tv.line); set('--track', tv.track); set('--ringoff', tv.ringoff); set('--halo', tv.halo); set('--panel', tv.panel); set('--alert', tv.alert); set('--on-alert', tv.onAlert); set('--caution', tv.caution);
       const html = '<div class="page">' + (vm.page === 'hub' ? hubHtml(vm) : todayHtml(vm)) + '</div>';
-      if (html !== this._last) { this._wrap.innerHTML = html; this._last = html; }
+      if (html !== this._last) {
+        if (this._shownPage && this._shownPage !== vm.page && this._last) this._swapPages(html, vm.page);
+        else this._wrap.innerHTML = html;
+        this._last = html;
+      }
+      this._shownPage = vm.page;
       if (this._cfg.debug) this._dbg.textContent = 'v' + VERSION + ' · ' + Math.round(this.clientWidth) + 'px wide · scale ' + (this._u || 0).toFixed(3) + ' · design height ' + Math.round(this._H) + (this._isCompact(this._H) ? ' · compact' : '') + ' · nav ' + this._cfg.navAutohide + 's · top bar helper ' + (this._st(this._cfg.header_toggle) || 'missing') + (this._st(this._cfg.header_toggle) === 'on' ? ' (hides in ' + Math.max(0, Math.round(this._cfg.headerAutohide - (Date.now() - this._lastTouch) / 1000)) + 's)' : '');
       else if (this._dbg.textContent) this._dbg.textContent = '';
       if (this._detail) {

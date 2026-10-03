@@ -12,6 +12,7 @@ A Home Assistant dashboard card for a wall-mounted portrait tablet: one custom e
 - Scales to whatever screen it is given (designed on a 1080 x 1920 canvas) and tightens up when the visible height is short.
 - Eleven themes: Default, four seasons, and seven holidays. `Auto` picks one by date: holidays run from two days before to two days after, seasons apply on Saturday and Sunday, weekdays stay on Default. Any theme can also be forced from an `input_select` helper.
 - A Hub/Today switch that fades in on touch and fades out again, and returns to a default page after a period of no touches.
+- Hub and Today swap with a short push in the direction of the switch (Hub is on the left, Today on the right), or a fade, or instantly if you turn it off.
 - A tap-to-open Systems panel that lists warnings (serious ones red, notices amber), every battery by name, backup status, security panel health and irrigation.
 - A "…" button that shows or hides Home Assistant's own top bar through a helper, if you use the kiosk-mode plugin.
 
@@ -35,6 +36,8 @@ views:
         number_weight: 500          # clock and temperature digits, 400 to 700
         vibrance: 1                 # 0.3 to 1, lowers colour saturation
         nav_autohide_seconds: 7     # 0 keeps the Hub/Today switch always visible
+        page_transition: slide      # slide, fade or none: how Hub and Today swap
+        transition_ms: 420
         header_autohide_seconds: 90
         entities:
           weather: weather.my_home
