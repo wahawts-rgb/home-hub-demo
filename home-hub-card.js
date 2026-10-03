@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.9.0
+ * Home Hub card for Home Assistant  -  v1.9.1
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -14,7 +14,7 @@
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.9.0';
+  const VERSION = '1.9.1';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -108,7 +108,7 @@
    * ------------------------------------------------------------------ */
   const THEMES = {
     'Default': { mode: 'light', base: '#98a3b1', c1: '#5f8fae', c2: '#2f6f7a', c3: '#d5d9df', c4: '#a9c0d2', c5: '#44566b', accent: '#1f6f7c', onAccent: '#ffffff' },
-    'Winter': { mode: 'dark', base: '#031730', c1: '#2f77c3', c2: '#1126a5', c3: '#979ca2', c4: '#010a13', c5: '#1126a5', accent: '#2f77c3', onAccent: '#ffffff' },
+    'Winter': { mode: 'dark', base: '#979ca2', c1: '#2f77c3', c2: '#1126a5', c3: '#031730', c4: '#010a13', c5: '#1126a5', accent: '#2f77c3', onAccent: '#ffffff' },
     'Spring': { mode: 'light', base: '#d9e4d2', c1: '#e7c4e1', c2: '#aec6db', c3: '#95ab60', c4: '#cd759a', c5: '#aec6db', accent: '#486d26', onAccent: '#ffffff' },
     'Summer': { mode: 'light', base: '#7cc9ad', c1: '#006a5c', c2: '#02ab82', c3: '#eee296', c4: '#61bf9a', c5: '#053f43', accent: '#006a5c', onAccent: '#ffffff' },
     'Fall': { mode: 'light', base: '#d4803f', c1: '#b11509', c2: '#fc5e1d', c3: '#eb9911', c4: '#fe8b4c', c5: '#680e03', accent: '#b11509', onAccent: '#ffffff' },
@@ -120,7 +120,7 @@
     'July 4th/Labor Day': { mode: 'light', base: '#c8d4e5', c1: '#2c3f70', c2: '#a5231c', c3: '#e8ebed', c4: '#8089d2', c5: '#2c3f70', accent: '#2c3f70', onAccent: '#ffffff' },
   };
   const LIGHT = { ink: '#181c20', muted: '#353b42', glass: 'rgba(255,255,255,0.46)', gborder: 'rgba(255,255,255,0.6)', gshadow: '0 10px 36px rgba(30,40,55,0.18), inset 0 1px 0 rgba(255,255,255,0.55)', chip: 'rgba(255,255,255,0.55)', chipb: 'rgba(255,255,255,0.7)', btn: 'rgba(255,255,255,0.35)', btnb: 'rgba(255,255,255,0.6)', line: 'rgba(24,28,32,0.14)', track: 'rgba(24,28,32,0.14)', ringoff: 'rgba(24,28,32,0.25)', halo: 'rgba(255,255,255,0.85)', panel: 'rgba(244,246,249,0.9)', alert: '#c0392b', caution: '#a8650a', onAlert: '#ffffff' };
-  const DARK = { ink: '#f2f5f9', muted: '#c3ccd8', glass: 'rgba(14,20,32,0.5)', gborder: 'rgba(255,255,255,0.16)', gshadow: '0 10px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)', chip: 'rgba(255,255,255,0.12)', chipb: 'rgba(255,255,255,0.2)', btn: 'rgba(255,255,255,0.1)', btnb: 'rgba(255,255,255,0.16)', line: 'rgba(255,255,255,0.18)', track: 'rgba(255,255,255,0.22)', ringoff: 'rgba(255,255,255,0.35)', halo: 'rgba(0,0,0,0.55)', panel: 'rgba(14,20,32,0.92)', alert: '#ff7a6b', caution: '#f2b84b', onAlert: '#2a0a07' };
+  const DARK = { ink: '#f2f5f9', muted: '#cdd5e0', glass: 'rgba(14,20,32,0.5)', gborder: 'rgba(255,255,255,0.16)', gshadow: '0 10px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)', chip: 'rgba(255,255,255,0.12)', chipb: 'rgba(255,255,255,0.2)', btn: 'rgba(255,255,255,0.1)', btnb: 'rgba(255,255,255,0.16)', line: 'rgba(255,255,255,0.18)', track: 'rgba(255,255,255,0.22)', ringoff: 'rgba(255,255,255,0.35)', halo: 'rgba(0,0,0,0.55)', panel: 'rgba(14,20,32,0.92)', alert: '#ff7a6b', caution: '#f2b84b', onAlert: '#2a0a07' };
 
   function adj(hex, v) {
     if (v >= 1) return hex;
