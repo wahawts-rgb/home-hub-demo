@@ -52,7 +52,7 @@ The defaults in `home-hub-card.js` are placeholders (the same ones the demo uses
 | `people` | list of `{ entity, status, name }` |
 | `calendars` | list of `{ entity, color }` |
 | `car` | battery, range, charging state, cable, lock, and a script for the seat heater |
-| `power` | list of `{ entity, name }` switches |
+| `power` | list of `{ entity, name }` switches. Add `confirm: off` to ask "Are you sure?" before switching one off, or `confirm: always` to ask both ways. Optional `confirm_message` sets the explanation. |
 | `sprinkler` | controller entities and zone switches |
 | `alarm`, `doors`, `windows`, `leaks` | alarm panel and contact or leak sensors |
 | `media`, `media_app` | a media player and its active-app sensor |

@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.9.1
+ * Home Hub card for Home Assistant  -  v1.10.0
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -14,7 +14,7 @@
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.9.1';
+  const VERSION = '1.10.0';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -57,7 +57,7 @@
     power: [
       { entity: 'switch.desk_lamp', name: 'Desk lamp' },
       { entity: 'switch.office_fan', name: 'Office fan' },
-      { entity: 'switch.pc', name: 'PC' },
+      { entity: 'switch.pc', name: 'PC', confirm: 'off', confirm_message: "Cutting power right away can interrupt a stream or an update that's still running." },
       { entity: 'switch.porch_lights', name: 'Porch lights' },
       { entity: 'switch.spare_socket', name: 'Spare socket', hide_when_unavailable: true },
     ],
@@ -438,6 +438,17 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .dsub{font-size:22u;color:var(--muted)}
 .kv{display:flex;justify-content:space-between;gap:12u;font-size:26u}
 .vv{font-weight:500;text-align:right}
+/* Confirm dialog */
+.dlg{position:absolute;left:0;top:0;right:0;bottom:0;opacity:0;pointer-events:none;transition:opacity .18s ease;z-index:30;display:flex;align-items:center;justify-content:center}
+.dlg.show{opacity:1;pointer-events:auto}
+.dbox{position:relative;width:760u;max-width:calc(100% - 80u);padding:40u;border-radius:32u;background:var(--panel);color:var(--ink);border:1px solid var(--gborder);box-shadow:var(--gshadow);backdrop-filter:blur(30u);-webkit-backdrop-filter:blur(30u);display:flex;flex-direction:column;gap:18u}
+.dq{font-size:46u;line-height:1.1}
+.dmsg{font-size:26u;color:var(--muted)}
+.dbtns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16u;margin-top:10u}
+.dbtn{height:76u;border-radius:20u;font-size:28u;font-weight:600}
+.dbtn:active{opacity:.7}
+.dbtn.keep{background:var(--accent);color:var(--on-accent)}
+.dbtn.go{background:var(--alert);color:var(--on-alert)}
 /* Compact: used when the visible screen is shorter than the 1080 x 1920 design */
 .compact .g{padding:22u;gap:8u}
 .compact .coming{gap:4u}
@@ -520,7 +531,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       // power
       '<div class="g power">' + lab('power', 'Power') +
       '<div class="pgrid ' + (power.items.length > 4 ? 'p6' : '') + '">' + power.items.map((i) =>
-        '<button class="pb ' + (i.on ? 'on ' : '') + (i.unavailable ? 'un ' : '') + (power.items.length > 4 ? 'p6x' : '') + '" data-act="toggle" data-ent="' + esc(i.entity) + '"><span class="a">' + esc(i.name) + '</span><span class="b">' + esc(i.stateText) + '</span></button>').join('') + '</div>' +
+        '<button class="pb ' + (i.on ? 'on ' : '') + (i.unavailable ? 'un ' : '') + (power.items.length > 4 ? 'p6x' : '') + '" data-act="toggle" data-ent="' + esc(i.entity) + '"' + (i.confirm ? ' data-confirm="' + esc(i.confirm) + '" data-name="' + esc(i.name) + '" data-msg="' + esc(i.message) + '"' : '') + '><span class="a">' + esc(i.name) + '</span><span class="b">' + esc(i.stateText) + '</span></button>').join('') + '</div>' +
       '<div class="foot">' + ic('drop', 'i26') + '<span>' + esc(power.sprinkler) + '</span></div></div>' +
       // house
       '<div class="g house"><div class="row">' + lab('shield', 'House') + pill(h.pill, h.pillDot) + '</div>' +
@@ -539,6 +550,15 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       '<div class="srows"><div class="sr"><span class="muted">Last backup</span><span class="v">' + esc(s.backup) + '</span></div>' +
       '<div class="sr"><span class="muted">Sensor batteries</span><span class="v">' + esc(s.batteries) + '</span></div></div></div>' +
       '</div>';
+  }
+
+  function confirmHtml(c) {
+    const verb = c.next === 'off' ? 'Turn off' : 'Turn on';
+    return '<div class="dback" data-act="confirm-cancel"></div><div class="dbox">' +
+      '<div class="serif dq">' + esc(verb) + ' ' + esc(c.name) + '?</div>' +
+      (c.message ? '<div class="dmsg">' + esc(c.message) + '</div>' : '') +
+      '<div class="dbtns"><button class="dbtn keep" data-act="confirm-cancel">Cancel</button>' +
+      '<button class="dbtn go" data-act="confirm-go">' + esc(verb) + '</button></div></div>';
   }
 
   function detailHtml(vm) {
@@ -619,11 +639,14 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
     constructor() {
       super();
       this._root = this.attachShadow({ mode: 'open' });
-      this._root.innerHTML = '<style>' + CSS + '</style><div class="stage"><div class="circ c1"></div><div class="circ c2"></div><div class="circ c3"></div><div class="circ c4"></div><div class="circ c5"></div><div class="wrap"></div><div class="nav"></div><div class="dtl"></div><div class="dbg"></div></div>';
+      this._root.innerHTML = '<style>' + CSS + '</style><div class="stage"><div class="circ c1"></div><div class="circ c2"></div><div class="circ c3"></div><div class="circ c4"></div><div class="circ c5"></div><div class="wrap"></div><div class="nav"></div><div class="dtl"></div><div class="dlg"></div><div class="dbg"></div></div>';
       this._stage = this._root.querySelector('.stage');
       this._wrap = this._root.querySelector('.wrap');
       this._nav = this._root.querySelector('.nav');
       this._dtl = this._root.querySelector('.dtl');
+      this._dlg = this._root.querySelector('.dlg');
+      this._lastDlg = '';
+      this._confirm = null;
       this._lastDtl = '';
       this._detail = null;
       this._dbg = this._root.querySelector('.dbg');
@@ -891,7 +914,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       const items = cfg.power.map((p) => {
         const s = st(p.entity);
         const unavailable = s === undefined || s === 'unavailable' || s === 'unknown';
-        return { entity: p.entity, name: p.name, on: s === 'on', unavailable, stateText: unavailable ? 'Unavailable' : s === 'on' ? 'On' : 'Off', hide: p.hide_when_unavailable && unavailable };
+        return { entity: p.entity, name: p.name, confirm: p.confirm || '', message: p.confirm_message || '', on: s === 'on', unavailable, stateText: unavailable ? 'Unavailable' : s === 'on' ? 'On' : 'Off', hide: p.hide_when_unavailable && unavailable };
       }).filter((i) => !i.hide).slice(0, 6);
       const sp = cfg.sprinkler;
       const zonesOn = sp.zones.filter((z) => st(z) === 'on').map((z) => String(this._name(z)).replace(sp.prefix, '').trim());
@@ -1044,6 +1067,11 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
         if (dh !== this._lastDtl) { this._dtl.innerHTML = dh; this._lastDtl = dh; }
       }
       this._dtl.classList.toggle('show', !!this._detail);
+      if (this._confirm) {
+        const ch = confirmHtml(this._confirm);
+        if (ch !== this._lastDlg) { this._dlg.innerHTML = ch; this._lastDlg = ch; }
+      }
+      this._dlg.classList.toggle('show', !!this._confirm);
       const nav = navHtml(vm);
       if (nav !== this._lastNav) { this._nav.innerHTML = nav; this._lastNav = nav; }
     }
@@ -1061,7 +1089,26 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
         try { window.localStorage.setItem('home_hub_people_style', this._peopleStyle); } catch (err) { /* ignore */ }
         this._schedule();
       }
-      else if (act === 'toggle') { h.callService('homeassistant', 'toggle', { entity_id: el.dataset.ent }); }
+      else if (act === 'toggle') {
+        const ent = el.dataset.ent;
+        const policy = el.dataset.confirm;
+        const cur = h.states[ent] && h.states[ent].state;
+        if (policy && (policy === 'always' || (policy === 'off' && cur === 'on'))) {
+          this._confirm = { entity: ent, name: el.dataset.name || ent, message: el.dataset.msg || '', next: cur === 'on' ? 'off' : 'on' };
+          clearTimeout(this._cfTimer);
+          this._cfTimer = setTimeout(() => { this._confirm = null; this._schedule(); }, 15000);
+          this._render();
+        } else {
+          h.callService('homeassistant', 'toggle', { entity_id: ent });
+        }
+      }
+      else if (act === 'confirm-go') {
+        const c = this._confirm;
+        this._confirm = null; clearTimeout(this._cfTimer);
+        if (c) h.callService('homeassistant', 'toggle', { entity_id: c.entity });
+        this._schedule();
+      }
+      else if (act === 'confirm-cancel') { this._confirm = null; clearTimeout(this._cfTimer); this._schedule(); this._render(); }
       else if (act === 'seat') {
         this._flash.seat = Date.now() + 4000;
         h.callService('script', 'turn_on', { entity_id: cfg.car.seat_script });
@@ -1090,6 +1137,6 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   window.customCards.push({ type: 'home-hub-card', name: 'Home Hub', description: 'Hub and Today pages with seasonal themes (v' + VERSION + ')' });
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
+    module.exports = { confirmHtml, detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
   }
 })();
