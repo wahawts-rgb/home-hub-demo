@@ -1,5 +1,5 @@
 /*
- * Home Hub card for Home Assistant  -  v1.13.0
+ * Home Hub card for Home Assistant  -  v1.13.1
  * One custom card, two pages: Hub (data) and Today (big clock + calendar).
  * Designed on a 1080 x 1920 canvas and scaled to whatever width it is given.
  *
@@ -21,7 +21,7 @@
  *                                #   defaults in DEFAULTS below (which the demo page uses)
  */
 (() => {
-  const VERSION = '1.13.0';
+  const VERSION = '1.13.1';
   const FONT_HREF = 'https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&display=swap';
 
   /* ------------------------------------------------------------------ *
@@ -630,7 +630,11 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
 .tvwc{font-size:32u;font-weight:500}
 .tvwh{font-size:25u;color:var(--muted)}
 .tvcard{padding:36u 40u;flex:1;min-height:0;gap:22u;overflow:hidden}
-.tvbody{flex:1;display:flex;flex-direction:column;justify-content:center;gap:20u;min-height:0}
+.tvbody{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tvin{margin:auto 0;display:flex;flex-direction:column;gap:20u}
+.tvbody.fit1 .tvin{gap:14u}.tvbody.fit1 .tvword{font-size:72u}.tvbody.fit1 .tvdef{font-size:31u}.tvbody.fit1 .tvex{font-size:27u}.tvbody.fit1 .tvhist{gap:22u}.tvbody.fit1 .tvt{font-size:28u}.tvbody.fit1 .tvy{font-size:40u;width:100u}
+.tvbody.fit2 .tvin{gap:10u}.tvbody.fit2 .tvword{font-size:62u}.tvbody.fit2 .tvdef{font-size:28u}.tvbody.fit2 .tvex{font-size:24u}.tvbody.fit2 .tvhist{gap:16u}.tvbody.fit2 .tvt{font-size:25u}.tvbody.fit2 .tvy{font-size:34u;width:88u}
+.tvbody.fit3 .tvex{display:none}.tvbody.fit3 .tvh:nth-child(3){display:none}
 .tvbody.swap{animation:tvin .8s ease both}
 @keyframes tvin{from{opacity:0;transform:translateY(12u)}to{opacity:1;transform:none}}
 .tvword{font-size:86u;line-height:1}
@@ -785,7 +789,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       '<div class="tvwx"><span class="acc" style="display:flex">' + ic(w.icon, 'i64') + '</span><div class="serif tvwt">' + esc(w.temp) + '</div>' +
       '<div><div class="tvwc">' + esc(w.cond) + '</div><div class="tvwh">' + esc(w.hilo) + '</div></div></div></div>' +
       '<div class="g tvcard">' + (t.panel === 'history' ? lab('clock', 'On this day \u00b7 ' + t.dateLabel) : lab('book', 'Word of the day')) +
-      '<div class="tvbody' + (t.swap ? ' swap' : '') + '">' + body + '</div>' +
+      '<div class="tvbody' + (t.swap ? ' swap' : '') + '"><div class="tvin">' + body + '</div></div>' +
       '<div class="tvfoot"><div class="tvpills">' + pills + '</div><div class="tvbar"><div class="tvfill"></div></div></div></div>' +
       '</div></div>';
   }
@@ -1026,6 +1030,7 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       this.style.setProperty('--u', u + 'px');
       this.style.height = h + 'px';
       this._stage.classList.toggle('compact', this._isCompact(this._H));
+      if (this._cfg && this._cfg.layout === 'tv') this._fitTv();
       this._schedule();
     }
 
@@ -1345,6 +1350,13 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
       set('--btn', tv.btn); set('--btnb', tv.btnb); set('--line', tv.line); set('--track', tv.track); set('--ringoff', tv.ringoff); set('--halo', tv.halo); set('--panel', tv.panel); set('--alert', tv.alert); set('--on-alert', tv.onAlert); set('--caution', tv.caution); set('--glass-flat', tv.glassFlat);
     }
 
+    _fitTv() {
+      const body = this._wrap && this._wrap.querySelector && this._wrap.querySelector('.tvbody');
+      if (!body || typeof body.scrollHeight !== 'number') return;
+      body.classList.remove('fit1', 'fit2', 'fit3');
+      for (let i = 1; i <= 3 && body.scrollHeight > body.clientHeight + 1; i++) body.classList.add('fit' + i);
+    }
+
     _renderTv(vm) {
       vm.tv = this._tvContent(new Date());
       const tv = themeVals(vm.theme, this._cfg.vibrance);
@@ -1357,6 +1369,8 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
         this._last = html;
         const f = this._wrap.querySelector('.tvfill');
         if (f) { f.style.animationDuration = vm.tv.period + 's'; f.style.animationDelay = '-' + vm.tv.phase.toFixed(2) + 's'; }
+        this._fitTv();
+        if (!this._fontsHooked && document.fonts && document.fonts.ready) { this._fontsHooked = true; document.fonts.ready.then(() => this._fitTv()); }
       }
       this._nav.classList.remove('show');
       if (this._cfg.debug) this._dbg.textContent = 'v' + VERSION + ' · tv · ' + Math.round(this.clientWidth) + 'px wide · scale ' + (this._u || 0).toFixed(3) + ' · ' + vm.tv.panel + ' (' + vm.tv.period + 's) · quote: ' + this._srcQuote + ' · word: ' + this._srcWord + ' · history: ' + (vm.tv.history.length ? 'web' : 'none');
@@ -1543,6 +1557,6 @@ button{font-family:inherit;color:inherit;border:0;background:none;padding:0;curs
   window.customCards.push({ type: 'home-hub-card', name: 'Home Hub', description: 'Hub and Today pages with seasonal themes (v' + VERSION + ')' });
 
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { parseWord, WORD_LIST, tvHtml, pickHistory, QUOTES, WORDS, confirmHtml, detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
+    module.exports = { parseWord, HomeHubCardClass: HomeHubCard, WORD_LIST, tvHtml, pickHistory, QUOTES, WORDS, confirmHtml, detailHtml, autoTheme, themeVals, groupEvents, hubHtml, todayHtml, navHtml, THEMES, holidays, seasonFor, U, CSS, HomeHubCard };
   }
 })();
