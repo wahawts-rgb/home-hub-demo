@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home Hub: interactive demo</title>
+<style>
+  :root { color-scheme: light; --bg:#e8ebef; --ink:#1c2128; --muted:#586069; --panel:#ffffff; --line:#d5dae0; --accent:#1f6f7c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header.top { max-width: 1100px; margin: 0 auto; padding: 28px 20px 8px; }
+  header.top h1 { margin: 0 0 4px; font-size: 28px; letter-spacing: -.01em; }
+  header.top p { margin: 0; color: var(--muted); max-width: 70ch; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; display: grid; grid-template-columns: auto minmax(280px, 1fr); gap: 28px; align-items: start; }
+  .device { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .frame { height: min(88vh, 980px); aspect-ratio: 9 / 16; display: flex; flex-direction: column; border: 10px solid #1b1d21; border-radius: 30px; overflow: hidden; background: #111; box-shadow: 0 18px 50px rgba(20,30,45,.28); }
+  .frame.short { aspect-ratio: 847 / 1386; }
+  .fakehdr { flex: 0 0 auto; height: 44px; display: flex; align-items: center; padding: 0 16px; background: #1e2430; color: #dfe5ee; font-size: 14px; gap: 10px; }
+  .fakehdr[hidden] { display: none; }
+  .cardhost { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+  .hint { margin: 0; font-size: 14px; color: var(--muted); text-align: center; max-width: 36ch; }
+  aside.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+  .panel h2 { margin: 0 0 6px; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .row { display: flex; flex-direction: column; gap: 6px; }
+  label { font-weight: 600; font-size: 14px; }
+  select, input[type=date] { font: inherit; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: #fff; color: var(--ink); min-height: 40px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); }
+  .btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { font: inherit; font-size: 14px; padding: 8px 14px; min-height: 40px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .small { font-size: 13px; color: var(--muted); margin: 0; }
+  footer { max-width: 1100px; margin: 0 auto; padding: 0 20px 36px; color: var(--muted); font-size: 14px; }
+  @media (max-width: 760px) {
+    main { grid-template-columns: 1fr; }
+    .frame { height: auto; width: min(100%, 440px); }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Home Hub</h1>
+  <p>An interactive demo of a Home Assistant dashboard card. Every name, place, event and photo here is made up, and nothing is connected to a real home. Tap and click around.</p>
+</header>
+
+<main>
+  <section class="device">
+    <div class="frame" id="frame">
+      <div class="fakehdr" id="fakehdr" hidden>Home Assistant top bar (this is what the "…" button shows and hides)</div>
+      <div class="cardhost" id="cardhost"></div>
+    </div>
+    <p class="hint">Touch the screen to bring up the Hub / Today switch. It fades out after a few seconds.</p>
+  </section>
+
+  <aside class="panel">
+    <div class="row">
+      <h2>Look</h2>
+      <label for="theme">Theme</label>
+      <select id="theme"></select>
+      <p class="small">Auto follows the date: holidays (two days either side), seasons on weekends, a calm default on weekdays.</p>
+    </div>
+    <div class="row">
+      <label for="date">Pretend today is</label>
+      <div class="btns"><input type="date" id="date"><button id="dateReset" type="button">Real date</button></div>
+      <p class="small">Try 24 Dec, 31 Oct or 4 Jul with the theme on Auto.</p>
+    </div>
+    <div class="row">
+      <label for="vibrance">Colour vibrance</label>
+      <input type="range" id="vibrance" min="0.3" max="1" step="0.05" value="1">
+    </div>
+    <div class="row">
+      <label for="people">People</label>
+      <select id="people"><option value="photos">Photos</option><option value="initials">Initials</option></select>
+    </div>
+    <div class="row">
+      <label for="calsize">Today calendar text size</label>
+      <select id="calsize"><option value="1">100%</option><option value="0.85" selected>85%</option><option value="0.7">70%</option></select>
+    </div>
+    <div class="row">
+      <label for="shape">Screen shape</label>
+      <select id="shape"><option value="tall">Full height (9:16)</option><option value="short">Shorter (system bars showing)</option></select>
+    </div>
+    <div class="row">
+      <h2>Pages</h2>
+      <div class="btns"><button type="button" data-page="hub" class="primary">Hub</button><button type="button" data-page="today">Today</button></div>
+    </div>
+    <div class="row">
+      <h2>Make something happen</h2>
+      <div class="btns" id="scenarios">
+        <button type="button" data-sc="door">Open the front door</button>
+        <button type="button" data-sc="lowBattery">Low battery</button>
+        <button type="button" data-sc="offline">Sensor offline</button>
+        <button type="button" data-sc="rainDelay">Rain delay</button>
+        <button type="button" data-sc="leak">Water leak</button>
+        <button type="button" data-sc="unplugged">Unplug the car</button>
+        <button type="button" data-sc="reset">Reset</button>
+      </div>
+      <p class="small">Then tap the Systems card for the detail view. Switches, the alarm buttons, play/pause and the car's seat button all respond too.</p>
+    </div>
+  </aside>
+</main>
+
+<footer>Sample data only. Add your repository link here.</footer>
+
+<script src="demo-hass.js"></script>
+<script>HomeHubDemo.installClock();</script>
+<script src="home-hub-card.js"></script>
+<script>
+(function () {
+  var THEMES = ['Auto', 'Default', 'Winter', 'Spring', 'Summer', 'Fall', 'Halloween', 'Thanksgiving', 'Christmas', 'New Year', 'Memorial Day', 'July 4th/Labor Day'];
+  try { localStorage.removeItem('home_hub_people_style'); localStorage.removeItem('home_hub_cal_scale'); } catch (e) { /* ignore */ }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var frame = $('frame'), fakehdr = $('fakehdr'), host = $('cardhost');
+  var themeSel = $('theme');
+  THEMES.forEach(function (t) { var o = document.createElement('option'); o.value = t; o.textContent = t; themeSel.appendChild(o); });
+
+  var demo;
+  var card = document.createElement('home-hub-card');
+  function refresh() {
+    fakehdr.hidden = demo.hass.states['input_boolean.kiosk_header'].state !== 'on';
+    card.hass = demo.hass;
+  }
+  demo = HomeHubDemo.createDemo(refresh);
+  demo.setTheme(themeSel.value);
+
+  card.setConfig({ fit_parent: true, default_page: 'hub', idle_return_seconds: 0, people_style: 'photos', calendar_scale: 0.85, header_autohide_seconds: 0 });
+  host.appendChild(card);
+  refresh();
+
+  themeSel.addEventListener('change', function () { demo.setTheme(themeSel.value); refresh(); });
+
+  function reloadDay() {
+    var theme = themeSel.value;
+    demo.rebuild();
+    demo.setTheme(theme);
+    card._loadForecast();
+    card._loadCalendars();
+    refresh();
+  }
+  $('date').addEventListener('change', function () { HomeHubDemo.setPretendDate($('date').value); reloadDay(); });
+  $('dateReset').addEventListener('click', function () { $('date').value = ''; HomeHubDemo.setPretendDate(''); reloadDay(); });
+
+  $('vibrance').addEventListener('input', function () { card._cfg.vibrance = parseFloat($('vibrance').value); card._schedule(); });
+  $('people').addEventListener('change', function () { card._peopleStyle = $('people').value; card._schedule(); });
+  $('calsize').addEventListener('change', function () { card._calLocal = parseFloat($('calsize').value); card._schedule(); });
+  $('shape').addEventListener('change', function () { frame.classList.toggle('short', $('shape').value === 'short'); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-page]'), function (b) {
+    b.addEventListener('click', function () {
+      card._page = b.getAttribute('data-page');
+      card._lastTouch = Date.now();
+      card._revealNav();
+      card._schedule();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sc]'), function (b) {
+    b.addEventListener('click', function () {
+      var name = b.getAttribute('data-sc');
+      demo.scenarios[name]();
+      if (name === 'reset') demo.setTheme(themeSel.value);
+      refresh();
+    });
+  });
+})();
+</script>
+</body>
+</html>
